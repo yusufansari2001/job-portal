@@ -1,9 +1,15 @@
 package com.jobportal.application_service.service.impl;
 
+import com.jobportal.application_service.client.JobClient;
+import com.jobportal.application_service.client.UserClient;
 import com.jobportal.application_service.dto.ApplicationRequest;
 import com.jobportal.application_service.dto.ApplicationResponse;
 import com.jobportal.application_service.entity.Application;
 import com.jobportal.application_service.enums.ApplicationStatus;
+import com.jobportal.application_service.exception.ApplicationNotFoundException;
+import com.jobportal.application_service.exception.ApplicationServiceException;
+import com.jobportal.application_service.exception.JobNotFoundException;
+import com.jobportal.application_service.exception.UserNotFoundException;
 import com.jobportal.application_service.repository.ApplicationRepository;
 import com.jobportal.application_service.service.ApplicationService;
 import lombok.RequiredArgsConstructor;
@@ -18,19 +24,38 @@ import java.util.stream.Collectors;
 public class ApplicationServiceImpl implements ApplicationService {
 
     private final ApplicationRepository applicationRepository;
+    private final UserClient userClient;
+    private final JobClient jobClient;
 
     @Override
     public ApplicationResponse apply(ApplicationRequest request) {
-        Application application = Application.builder()
-                .jobId(request.getJobId())
-                .userId(request.getUserId())
-                .resumeUrl(request.getResumeUrl())
-                .status(ApplicationStatus.PENDING)
-                .appliedAt(LocalDateTime.now())
-                .build();
+        // 👇 Validate User
+        try {
+            userClient.getUserById(request.getUserId());
+        } catch (Exception ex) {
+            throw  new UserNotFoundException(request.getUserId());
+        }
 
-        Application saved = applicationRepository.save(application);
-        return mapToResponse(saved);
+        // 👇 Validate Job
+        try {
+            jobClient.getJobById(request.getJobId());
+        } catch (Exception ex) {
+            throw new JobNotFoundException(request.getJobId());
+        }
+
+        try {
+            Application application = Application.builder()
+                    .jobId(request.getJobId())
+                    .userId(request.getUserId())
+                    .resumeUrl(request.getResumeUrl())
+                    .status(ApplicationStatus.PENDING)
+                    .appliedAt(LocalDateTime.now())
+                    .build();
+
+            return mapToResponse(applicationRepository.save(application));
+        } catch (Exception e) {
+            throw new ApplicationServiceException("Failed to apply for job. Please try again later.");
+        }
     }
 
     @Override
@@ -52,7 +77,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     public ApplicationResponse updateStatus(Long applicationId, String status) {
         Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
 
         application.setStatus(ApplicationStatus.valueOf(status.toUpperCase()));
         return mapToResponse(applicationRepository.save(application));
