@@ -30,7 +30,7 @@ public class Notification {
 
     private String message;
 
-    private boolean read;
+    private boolean isRead;
 
     private LocalDateTime timestamp;
 }

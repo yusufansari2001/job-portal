@@ -1,6 +1,7 @@
 package com.jobportal.application_service.service.impl;
 
 import com.jobportal.application_service.client.JobClient;
+import com.jobportal.application_service.client.NotificationClient;
 import com.jobportal.application_service.client.UserClient;
 import com.jobportal.application_service.dto.ApplicationRequest;
 import com.jobportal.application_service.dto.ApplicationResponse;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 public class ApplicationServiceImpl implements ApplicationService {
 
     private final ApplicationRepository applicationRepository;
+    private final NotificationClient notificationClient;
     private final UserClient userClient;
     private final JobClient jobClient;
 
@@ -52,10 +54,22 @@ public class ApplicationServiceImpl implements ApplicationService {
                     .appliedAt(LocalDateTime.now())
                     .build();
 
-            return mapToResponse(applicationRepository.save(application));
+            // Save to DB
+            Application savedApplication = applicationRepository.save(application);
+
+            // ✅ Send notification after saving successfully
+            notificationClient.sendNotification(
+                    savedApplication.getUserId(),
+                    "You have successfully applied for job ID " + savedApplication.getJobId()
+            );
+
+            // Return response
+            return mapToResponse(savedApplication);
+
         } catch (Exception e) {
             throw new ApplicationServiceException("Failed to apply for job. Please try again later.");
         }
+
     }
 
     @Override
