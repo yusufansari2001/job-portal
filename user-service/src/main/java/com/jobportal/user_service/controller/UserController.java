@@ -1,5 +1,7 @@
 package com.jobportal.user_service.controller;
 
+import com.jobportal.user_service.dto.JwtResponse;
+import com.jobportal.user_service.dto.LoginRequest;
 import com.jobportal.user_service.dto.UserDto;
 import com.jobportal.user_service.entity.User;
 import com.jobportal.user_service.service.UserService;
@@ -26,6 +28,12 @@ public class UserController {
     @PostMapping
     public ResponseEntity<UserDto> createUser(@RequestBody @Valid UserDto userDto) {
         return ResponseEntity.ok(userService.createUser(userDto));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<JwtResponse> login(@RequestBody LoginRequest request) {
+        String token = userService.loginAndGenerateToken(request);
+        return ResponseEntity.ok(new JwtResponse(token));
     }
 
     @GetMapping
